@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    tools:context=".main.MainActivity"
+    tools:visibility="visible"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentBottom="true">
+
+        <LinearLayout
+            android:id="@+id/linear1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/linear2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="8dp"
+                android:orientation="vertical">
+
+                <Button
+                    android:id="@+id/decodeButton"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/merge" />
+
+                <TextView
+                    android:id="@+id/oldAndroidInfo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:textColor="#673AB7"
+                    android:text="@string/oldAndroidInfo"
+                    android:visibility="gone"/>
+
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/workingFileField"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:ems="10"
+                android:inputType="textNoSuggestions"
+                android:textColor="#673AB7"
+                android:textColorHint="#673AB7"
+                android:hint="@string/working_file"
+                android:importantForAutofill="no"/>
+
+            <TextView
+                android:id="@+id/errorField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textColor="#673AB7"
+                android:textIsSelectable="true"
+                android:visibility="gone"/>
+
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>
