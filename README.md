@@ -9,7 +9,8 @@ There are 3 ways to open the split APK to be merged:
 * Press (open) the file and select AntiSplit M in available options
 * Open the app from launcher and press the button then select the split APK file.
    * This option does not work on Android < 4.4, use one of the 2 other options or type the path to the APK into the box in the app.
-Note: The APK will not be signed, you have to sign it
+
+Note: The APK will not be signed, you have to sign it before installing with any tool like [apk-signer](https://play.google.com/store/apps/details?id=com.haibison.apksigner)
 
 # Todo
 * Implement signing the exported APK
