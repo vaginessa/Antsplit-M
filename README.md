@@ -18,3 +18,4 @@ Note: The APK will not be signed, you have to sign it before installing with any
 
 # Todo
 * Implement signing the exported APK
+* support picking from installed apps
