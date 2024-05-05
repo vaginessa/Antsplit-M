@@ -9,6 +9,7 @@ In addition, Antisplit G2 (com.tilks.arscmerge), the fastest and lightest of the
 
 # Usage
 Video - https://www.youtube.com/watch?v=Nd3vEzRWY-Q
+
 There are 3 ways to open the split APK to be merged:
 * Share the file and select AntiSplit M in the share menu
 * Press (open) the file and select AntiSplit M in available options
