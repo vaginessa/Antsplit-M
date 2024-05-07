@@ -15,10 +15,6 @@
  */
 package com.reandroid.apkeditor.merge;
 
-import static com.abdurazaaqmohammed.AntiSplit.main.MainActivity.newFile;
-
-import android.os.Environment;
-
 import com.reandroid.apk.ApkBundle;
 import com.reandroid.apk.ApkModule;
 import com.reandroid.apkeditor.common.AndroidManifestHelper;
@@ -43,28 +39,30 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class Merger {
+
+    private static File newFile(File outputDir, ZipEntry zipEntry) throws IOException {
+        File file = new File(outputDir, zipEntry.getName());
+        String canonicalizedPath = file.getCanonicalPath();
+        if (!canonicalizedPath.startsWith(outputDir.getCanonicalPath() + File.separator)) {
+            throw new IOException("Zip entry is outside of the target dir: " + zipEntry.getName());
+        }
+        return file;
+    }
     private static void extractZip(InputStream zi, File outputDir) throws IOException {
         byte[] buffer = new byte[1024];
         try (ZipInputStream zis = new ZipInputStream(zi)) {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
                 File newFile = newFile(outputDir, zipEntry);
-                if (zipEntry.isDirectory()) {
-                    if (!newFile.isDirectory() && !newFile.mkdirs()) {
-                        throw new IOException("Failed to create directory: " + newFile);
-                    }
-                } else {
-                    File parent = newFile.getParentFile();
-                    if (!parent.isDirectory() && !parent.mkdirs()) {
-                        throw new IOException("Failed to create directory: " + parent);
-                    }
-
+                final String name = zipEntry.getName();
+                if(name.endsWith(".apk")) {
                     FileOutputStream fos = new FileOutputStream(newFile);
                     int len;
                     while ((len = zis.read(buffer)) > 0) {
                         fos.write(buffer, 0, len);
                     }
                     fos.close();
+                    LogUtil.logMessage("Extracted " + name);
                 }
                 zipEntry = zis.getNextEntry();
             }
@@ -76,6 +74,7 @@ public class Merger {
             return;
         }
         AndroidManifestBlock manifest = apkModule.getAndroidManifest();
+        LogUtil.logMessage("Sanitizing manifest ...");
         AndroidManifestHelper.removeAttributeFromManifestByName(manifest,
                 AndroidManifest.NAME_requiredSplitTypes);
         AndroidManifestHelper.removeAttributeFromManifestByName(manifest,
@@ -94,7 +93,8 @@ public class Merger {
             if(!splits_removed){
                 splits_removed = removeSplitsTableEntry(meta, apkModule);
             }
-
+            LogUtil.logMessage("Removed-element : <" + meta.getName() + "> name=\""
+                    + AndroidManifestHelper.getNamedValue(meta) + "\"");
             application.remove(meta);
         }
         manifest.refresh();
@@ -135,6 +135,7 @@ public class Merger {
                 continue;
             }
             String path = resValue.getValueAsString();
+            LogUtil.logMessage("Removed-table-entry : "+path);
             //Remove file entry
             zipEntryMap.remove(path);
             // It's not safe to destroy entry, resource id might be used in dex code.
@@ -147,10 +148,16 @@ public class Merger {
         return true;
     }
 
+    public interface LogListener {
+        void onLog(String log);
+    }
+
     public static void run(InputStream ins, File cacheDir) throws IOException {
+        LogUtil.logMessage("Searching apk files ...");
         extractZip(ins, cacheDir);
         ApkBundle bundle=new ApkBundle();
         bundle.loadApkDirectory(cacheDir, false);
+        LogUtil.logMessage("Found modules: "+bundle.getApkModuleList().size());
 
         ApkModule mergedModule=bundle.mergeModules();
         sanitizeManifest(mergedModule);
@@ -166,7 +173,7 @@ public class Merger {
 
         ApkModule mergedModule=bundle.mergeModules();
         sanitizeManifest(mergedModule);
-        mergedModule.writeApk(new File(Environment.getExternalStorageDirectory() + File.separator + filename.replace(".apks", "_antisplit.apk").replace(".xapk", "_antisplit.apk").replace(".apkm", "_antisplit.apk")));
+        mergedModule.writeApk(new File("/sdcard/Download" + File.separator + filename.replace(".apks", "_antisplit.apk").replace(".xapk", "_antisplit.apk").replace(".apkm", "_antisplit.apk")));
         mergedModule.close();
         bundle.close();
     }
