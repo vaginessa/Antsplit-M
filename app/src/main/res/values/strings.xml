@@ -3,4 +3,7 @@
     <string name="oldAndroidInfo">Note: Your version of Android is too old to use the file picker. You have to input the location of the file manually. The files will be saved to Download folder in the internal storage.</string>
     <string name="working_file">Working file</string>
     <string name="merge">Select split APK to Merge/AntiSplit</string>
+    <string name="success">Success, select where to save</string>
+    <string name="success_saved">File saved successfully</string>
+    <string name="enable_logs">Enable logs</string>
 </resources>
