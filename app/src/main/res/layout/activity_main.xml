@@ -47,6 +47,14 @@
 
             </LinearLayout>
 
+            <Switch
+                android:id="@+id/logSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:textSize="20sp"
+                android:text="@string/enable_logs"
+                android:textColor="#673AB7" />
+
             <EditText
                 android:id="@+id/workingFileField"
                 android:layout_width="match_parent"
@@ -66,6 +74,14 @@
                 android:textColor="#673AB7"
                 android:textIsSelectable="true"
                 android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/logField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textColor="#673AB7"
+                android:textIsSelectable="true"/>
 
         </LinearLayout>
     </ScrollView>
