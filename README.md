@@ -16,7 +16,7 @@ There are 3 ways to open the split APK to be merged:
 * Open the app from launcher and press the button then select the split APK file.
    * This option does not work on Android < 4.4, use one of the 2 other options or type the path to the APK (on your device storage) into the box in the app.
 
-Note: The APK will not be signed, you have to sign it before installing with any tool like [apk-signer](https://play.google.com/store/apps/details?id=com.haibison.apksigner). If you are planning to make any further modifications to the APK, you only need to sign it after you modify it.
+Note: The APK will not be signed, you have to sign it before installing with any tool like [apk-signer](https://play.google.com/store/apps/details?id=com.haibison.apksigner). If you are planning to further modify the APK, you only need to sign it after the modifications.
 
 Note: Some apps verify the signature of the APK or take other measures to check if the app was modified, which may cause it to crash on startup.
 
