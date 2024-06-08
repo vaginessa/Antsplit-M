@@ -15,6 +15,9 @@
   */
 package com.reandroid.apk;
 
+import android.util.Log;
+
+import com.reandroid.apkeditor.merge.LogUtil;
 import com.reandroid.archive.BlockInputSource;
 import com.reandroid.archive.ZipEntryMap;
 import com.reandroid.archive.block.ApkSignatureBlock;
@@ -41,7 +44,6 @@ public class ApkBundle implements Closeable {
             throw new FileNotFoundException("Nothing to merge, empty modules");
         }
         ApkModule result = new ApkModule(generateMergedModuleName(), new ZipEntryMap());
-        result.setAPKLogger(apkLogger);
         result.setLoadDefaultFramework(false);
 
         mergeStringPools(result);
@@ -80,7 +82,7 @@ public class ApkBundle implements Closeable {
         if(!hasOneTableBlock() || mergedModule.hasTableBlock()){
             return;
         }
-        logMessage("Merging string pools ... ");
+        LogUtil.logMessage("Merging string pools ... ");
         TableBlock createdTable = new TableBlock();
         BlockInputSource<TableBlock> inputSource=
                 new BlockInputSource<>(TableBlock.FILE_NAME, createdTable);
@@ -98,7 +100,7 @@ public class ApkBundle implements Closeable {
 
         poolMerger.mergeTo(createdTable.getTableStringPool());
 
-        logMessage("Merged string pools="+poolMerger.getMergedPools()
+        LogUtil.logMessage("Merged string pools="+poolMerger.getMergedPools()
                 +", style="+poolMerger.getMergedStyleStrings()
                 +", strings="+poolMerger.getMergedStrings());
     }
@@ -140,9 +142,7 @@ public class ApkBundle implements Closeable {
     public List<ApkModule> getApkModuleList(){
         return new ArrayList<>(mModulesMap.values());
     }
-    public void loadApkDirectory(File dir) throws IOException{
-        loadApkDirectory(dir, false);
-    }
+
     public void loadApkDirectory(File dir, boolean recursive) throws IOException {
         if(!dir.isDirectory()){
             throw new FileNotFoundException("No such directory: "+dir);
@@ -156,12 +156,11 @@ public class ApkBundle implements Closeable {
         if(apkList.size()==0){
             throw new FileNotFoundException("No '*.apk' files in directory: "+dir);
         }
-        logMessage("Found apk files: "+apkList.size());
+        LogUtil.logMessage("Found apk files: "+apkList.size());
         for(File file:apkList){
-            logVerbose("Loading: "+file.getName());
+            LogUtil.logMessage("Loading: "+file.getName());
             String name = ApkUtil.toModuleName(file);
             ApkModule module = ApkModule.loadApkFile(file, name);
-            module.setAPKLogger(apkLogger);
             addModule(module);
         }
     }
@@ -170,21 +169,6 @@ public class ApkBundle implements Closeable {
         String name = apkModule.getModuleName();
         mModulesMap.remove(name);
         mModulesMap.put(name, apkModule);
-    }
-    public boolean containsApkModule(String moduleName){
-        return mModulesMap.containsKey(moduleName);
-    }
-    public ApkModule removeApkModule(String moduleName){
-        return mModulesMap.remove(moduleName);
-    }
-    public ApkModule getApkModule(String moduleName){
-        return mModulesMap.get(moduleName);
-    }
-    public List<String> listModuleNames(){
-        return new ArrayList<>(mModulesMap.keySet());
-    }
-    public int countModules(){
-        return mModulesMap.size();
     }
     public Collection<ApkModule> getModules(){
         return mModulesMap.values();
@@ -203,23 +187,5 @@ public class ApkBundle implements Closeable {
             module.close();
         }
         mModulesMap.clear();
-    }
-    public void setAPKLogger(APKLogger logger) {
-        this.apkLogger = logger;
-    }
-    private void logMessage(String msg) {
-        if(apkLogger!=null){
-            apkLogger.logMessage(msg);
-        }
-    }
-    private void logError(String msg, Throwable tr) {
-        if(apkLogger!=null){
-            apkLogger.logError(msg, tr);
-        }
-    }
-    private void logVerbose(String msg) {
-        if(apkLogger!=null){
-            apkLogger.logVerbose(msg);
-        }
     }
 }

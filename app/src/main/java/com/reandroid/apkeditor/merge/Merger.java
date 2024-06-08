@@ -15,6 +15,8 @@
  */
 package com.reandroid.apkeditor.merge;
 
+import android.os.Environment;
+
 import com.reandroid.apk.ApkBundle;
 import com.reandroid.apk.ApkModule;
 import com.reandroid.apkeditor.common.AndroidManifestHelper;
@@ -34,6 +36,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -50,11 +53,13 @@ public class Merger {
     }
     private static void extractZip(InputStream zi, File outputDir) throws IOException {
         byte[] buffer = new byte[1024];
+
         try (ZipInputStream zis = new ZipInputStream(zi)) {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
                 File newFile = newFile(outputDir, zipEntry);
                 final String name = zipEntry.getName();
+
                 if(name.endsWith(".apk")) {
                     FileOutputStream fos = new FileOutputStream(newFile);
                     int len;
@@ -68,6 +73,7 @@ public class Merger {
             }
             zis.closeEntry();
         }
+
     }
     private static void sanitizeManifest(ApkModule apkModule) {
         if(!apkModule.hasAndroidManifest()){
@@ -152,7 +158,7 @@ public class Merger {
         void onLog(String log);
     }
 
-    public static void run(InputStream ins, File cacheDir) throws IOException {
+    public static void run(InputStream ins, File cacheDir, OutputStream out) throws IOException {
         LogUtil.logMessage("Searching apk files ...");
         extractZip(ins, cacheDir);
         ApkBundle bundle=new ApkBundle();
@@ -161,19 +167,8 @@ public class Merger {
 
         ApkModule mergedModule=bundle.mergeModules();
         sanitizeManifest(mergedModule);
-        mergedModule.writeApk(new File(cacheDir + File.separator + "AntiSplit M Output.apk"));
-        mergedModule.close();
-        bundle.close();
-    }
 
-    public static void runOldAndroid(InputStream ins, File cacheDir, String filename) throws IOException {
-        extractZip(ins, cacheDir);
-        ApkBundle bundle=new ApkBundle();
-        bundle.loadApkDirectory(cacheDir, false);
-
-        ApkModule mergedModule=bundle.mergeModules();
-        sanitizeManifest(mergedModule);
-        mergedModule.writeApk(new File("/sdcard/Download" + File.separator + filename.replace(".apks", "_antisplit.apk").replace(".xapk", "_antisplit.apk").replace(".apkm", "_antisplit.apk")));
+        mergedModule.writeApk(out);
         mergedModule.close();
         bundle.close();
     }

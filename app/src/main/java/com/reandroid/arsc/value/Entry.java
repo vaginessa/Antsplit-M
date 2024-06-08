@@ -84,27 +84,7 @@ public class Entry extends Block implements JSONConvert<JSONObject> {
         }
         return null;
     }
-    public String getXmlTag(){
-        String tag = TypeString.toXmlTagName(getTypeName());
-        if(tag == null || !tag.contains("array")){
-            return tag;
-        }
-        ResTableMapEntry mapEntry = getResTableMapEntry();
-        if(mapEntry == null){
-            return tag;
-        }
-        ValueType allValueType = mapEntry.isAllSameValueType();
-        if(allValueType == null){
-            return tag;
-        }
-        if(allValueType == ValueType.STRING){
-            return "string-" + tag;
-        }
-        if(allValueType == ValueType.DEC){
-            return "integer-" + tag;
-        }
-        return tag;
-    }
+
     public SpecFlag getSpecFlag(){
         SpecBlock specBlock = getSpecBlock();
         if(specBlock == null){
@@ -123,26 +103,7 @@ public class Entry extends Block implements JSONConvert<JSONObject> {
         }
         return id;
     }
-    /**
-     * renames this entry and all configuration on this package
-     * */
-    public SpecString reName(String name){
-        SpecTypePair specTypePair = getSpecTypePair();
-        if(specTypePair == null){
-            return null;
-        }
-        SpecString specString = null;
-        Iterator<Entry> iterator = specTypePair.getEntries(getId(), false);
-        while (iterator.hasNext()){
-            Entry entry = iterator.next();
-            if(specString == null){
-                specString = entry.setName(name);
-            }else {
-                entry.updateSpecReference(specString);
-            }
-        }
-        return specString;
-    }
+
     public SpecString setName(String name){
         return setName(name, false);
     }
@@ -220,16 +181,7 @@ public class Entry extends Block implements JSONConvert<JSONObject> {
         }
         return -1;
     }
-    public TypeString getTypeString(){
-        TypeBlock typeBlock = getTypeBlock();
-        if(typeBlock!=null){
-            return typeBlock.getTypeString();
-        }
-        return null;
-    }
-    public boolean isDefined(){
-        return getSpecReference() != -1;
-    }
+
     public boolean isDefault(){
         ResConfig resConfig = getResConfig();
         if(resConfig!=null){
@@ -249,32 +201,7 @@ public class Entry extends Block implements JSONConvert<JSONObject> {
         }
         linkNullSpecString(specString);
     }
-    public void updateSpecReference(SpecString specString){
-        if(isSameSpecString(specString)){
-            return;
-        }
-        TableEntry<?, ?> tableEntry = getTableEntry();
-        if(tableEntry != null){
-            tableEntry.getHeader().setKey(specString);
-            unlinkNullSpecString();
-        }else if(mNullSpecReference != null){
-            linkNullSpecString(specString);
-        }else if(specString == null){
-            unlinkNullSpecString();
-        }
-    }
-    public void setSpecReference(int ref){
-        if(ref == getSpecReference()){
-            return;
-        }
-        TableEntry<?, ?> tableEntry = getTableEntry();
-        if(tableEntry == null){
-            linkNullSpecString(ref);
-            return;
-        }
-        unlinkNullSpecString();
-        tableEntry.getHeader().setKey(ref);
-    }
+
     private boolean isSameSpecString(SpecString specString){
         int ref = getSpecReference();
         if(specString == null){
@@ -286,18 +213,7 @@ public class Entry extends Block implements JSONConvert<JSONObject> {
         return mNullSpecReference == null
                 || getTableEntry() == null;
     }
-    private void linkNullSpecString(int ref){
-        if(ref < 0){
-            unlinkNullSpecString();
-            return;
-        }
-        SpecStringPool specStringPool = getSpecStringPool();
-        if(specStringPool == null){
-            unlinkNullSpecString();
-            return;
-        }
-        linkNullSpecString(specStringPool.get(ref));
-    }
+
     private void linkNullSpecString(SpecString specString){
         if(specString == null){
             unlinkNullSpecString();
@@ -339,25 +255,6 @@ public class Entry extends Block implements JSONConvert<JSONObject> {
         TableEntry<?, ?> tableEntry = ensureTableEntry(false);
         ResValue resValue = (ResValue) tableEntry.getValue();
         resValue.setTypeAndData(valueType, data);
-        return resValue;
-    }
-    public ResValue setValueAsBoolean(boolean val){
-        int data = val?0xffffffff:0;
-        return setValueAsRaw(ValueType.BOOLEAN, data);
-    }
-    public ResValue setValueAsReference(int resourceId){
-        return setValueAsRaw(ValueType.REFERENCE, resourceId);
-    }
-    public ResValue setValueAsString(StyleDocument styledString){
-        TableEntry<?, ?> tableEntry = ensureTableEntry(false);
-        ResValue resValue = (ResValue) tableEntry.getValue();
-        resValue.setValueAsString(styledString);
-        return resValue;
-    }
-    public ResValue setValueAsString(String str){
-        TableEntry<?, ?> tableEntry = ensureTableEntry(false);
-        ResValue resValue = (ResValue) tableEntry.getValue();
-        resValue.setValueAsString(str);
         return resValue;
     }
     public SpecString getSpecString(){

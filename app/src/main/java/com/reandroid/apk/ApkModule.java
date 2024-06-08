@@ -24,6 +24,7 @@ import com.reandroid.archive.ZipEntryMap;
 import com.reandroid.archive.block.ApkSignatureBlock;
 import com.reandroid.archive.io.ArchiveFileEntrySource;
 import com.reandroid.archive.writer.ApkFileWriter;
+import com.reandroid.archive.writer.ApkStreamWriter;
 import com.reandroid.arsc.ApkFile;
 import com.reandroid.arsc.array.PackageArray;
 import com.reandroid.arsc.base.Block;
@@ -45,6 +46,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -218,7 +220,19 @@ public class ApkModule implements ApkFile, Closeable {
         writer.setWriteProgress(progress);
         writer.write();
     }
-
+    public void writeApk(OutputStream outputStream) throws IOException {
+        createApkStreamWriter(outputStream).write();
+    }
+    public ApkStreamWriter createApkStreamWriter(OutputStream outputStream) {
+        ZipEntryMap zipEntryMap = getZipEntryMap();
+        UncompressedFiles uf = getUncompressedFiles();
+        uf.apply(zipEntryMap);
+        ApkStreamWriter writer = new ApkStreamWriter(outputStream,
+                zipEntryMap.toArray(true));
+        writer.setApkSignatureBlock(getApkSignatureBlock());
+        writer.setArchiveInfo(zipEntryMap.getArchiveInfo());
+        return writer;
+    }
     public ApkFileWriter createApkFileWriter(File file) throws IOException {
         ZipEntryMap zipEntryMap = getZipEntryMap();
         UncompressedFiles uf = getUncompressedFiles();
