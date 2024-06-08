@@ -56,6 +56,14 @@
                 android:text="@string/enable_logs"
                 android:textColor="#673AB7" />
 
+            <Switch
+                android:id="@+id/ask"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:text="@string/ask"
+                android:textColor="#673AB7" />
+
             <EditText
                 android:id="@+id/workingFileField"
                 android:layout_width="match_parent"

@@ -5,4 +5,7 @@
     <string name="merge">Select split APK to Merge/AntiSplit</string>
     <string name="success_saved">File saved successfully</string>
     <string name="enable_logs">Enable logs</string>
+    <string name="ask">Ask where to save the file each time (if disabled, write the AntiSplitted APK to the same directory where the split file was from)</string>
+    <string name="grant_storage">Storage permission is required to save to the same dir as the selected file</string>
+    <string name="no_filepath">Could not find the filepath of the selected file; saving to </string>
 </resources>

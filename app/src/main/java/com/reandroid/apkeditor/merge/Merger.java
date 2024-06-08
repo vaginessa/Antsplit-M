@@ -57,18 +57,16 @@ public class Merger {
         try (ZipInputStream zis = new ZipInputStream(zi)) {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
-                File newFile = newFile(outputDir, zipEntry);
                 final String name = zipEntry.getName();
-
                 if(name.endsWith(".apk")) {
-                    FileOutputStream fos = new FileOutputStream(newFile);
+                    FileOutputStream fos = new FileOutputStream(newFile(outputDir, zipEntry));
                     int len;
                     while ((len = zis.read(buffer)) > 0) {
                         fos.write(buffer, 0, len);
                     }
                     fos.close();
                     LogUtil.logMessage("Extracted " + name);
-                }
+                } else LogUtil.logMessage("Skipping " + name + ": Not an APK file");
                 zipEntry = zis.getNextEntry();
             }
             zis.closeEntry();
