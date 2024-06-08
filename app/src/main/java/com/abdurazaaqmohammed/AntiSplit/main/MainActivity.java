@@ -143,7 +143,7 @@ public class MainActivity extends Activity implements Merger.LogListener {
         final File cacheDir = getExternalCacheDir();
         deleteDir(cacheDir);
         try {
-            Merger.run(getContentResolver().openInputStream(splitAPKUri), cacheDir, getContentResolver().openOutputStream(outputUri));
+            Merger.run(getContentResolver().openInputStream(splitAPKUri), cacheDir, getContentResolver().openOutputStream(outputUri), splitAPKUri.getPath().endsWith("xapk"));
         } catch (IOException e) {
             showError(e.toString());
         }

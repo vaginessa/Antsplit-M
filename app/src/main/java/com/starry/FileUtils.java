@@ -46,7 +46,6 @@ public class FileUtils {
     https://github.com/starry-shivam/FileUtils/blob/main/file-utils/src/main/java/com/starry/file_utils/FileUtils.kt
      */
 
-    private static final String TAG = "FileUtils";
     private static String FALLBACK_COPY_FOLDER = "upload_part";
     private Context context;
 
