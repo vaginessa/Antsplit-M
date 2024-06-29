@@ -20,6 +20,9 @@ Note: The APK will not be signed, you have to sign it before installing with any
 
 Note: Some apps verify the signature of the APK or take other measures to check if the app was modified, which may cause it to crash on startup.
 
+# Screenshots
+<img src="/images/1.4.1 mainscreen.jpg" height="540" width="243" /> <img src="/images/1.4.1 dialog.jpg" height="540" width="243" /> <img src="/images/1.4.1 processed screen.jpg" height="540" width="243" />
+
 # Todo
 * Implement signing the exported APK
 * support picking from installed apps
