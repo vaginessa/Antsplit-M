@@ -3,7 +3,9 @@ package com.abdurazaaqmohammed.AntiSplit.main;
 import static android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,6 +16,8 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.view.View;
 import android.widget.ScrollView;
@@ -22,13 +26,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.abdurazaaqmohammed.AntiSplit.R;
+import com.reandroid.apk.ApkBundle;
+import com.reandroid.apk.ApkModule;
 import com.reandroid.apkeditor.merge.LogUtil;
 import com.reandroid.apkeditor.merge.Merger;
 import com.starry.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.util.List;
 
 public class MainActivity extends Activity implements Merger.LogListener {
     private final static int REQUEST_CODE_OPEN_SPLIT_APK_TO_ANTISPLIT = 1;
@@ -36,6 +44,7 @@ public class MainActivity extends Activity implements Merger.LogListener {
     private final static boolean supportsFilePicker = Build.VERSION.SDK_INT>19;
     private static boolean logEnabled;
     private static boolean ask;
+    private static boolean showDialog;
     private Uri splitAPKUri;
 
     @Override
@@ -48,7 +57,7 @@ public class MainActivity extends Activity implements Merger.LogListener {
 
         if (!supportsFilePicker) {
             findViewById(R.id.oldAndroidInfo).setVisibility(View.VISIBLE);
-            // Android versions below 4.4 are too old to use the file picker for ACTION_OPEN_DOCUMENT/ACTION_CREATE_DOCUMENT. The location of the file must be manually input. The files will be saved to Download folder in the internal storage.
+            // Android versions below 4.4 are too old to use the file picker for ACTION_OPEN_DOCUMENT/ACTION_CREATE_DOCUMENT. The location of the file must be manually input. The files will be saved to "AntiSplit-M" folder in the internal storage.
         }
 
         SharedPreferences settings = getSharedPreferences("set", Context.MODE_PRIVATE);
@@ -75,6 +84,11 @@ public class MainActivity extends Activity implements Merger.LogListener {
             });
         } else askSwitch.setVisibility(View.INVISIBLE);
 
+        showDialog = settings.getBoolean("showDialog", false);
+        Switch showDialogSwitch = findViewById(R.id.showDialog);
+        showDialogSwitch.setChecked(showDialog);
+        showDialogSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> showDialog = isChecked);
+
         findViewById(R.id.decodeButton).setOnClickListener(v -> openFilePickerOrStartProcessing());
 
         // Check if user shared or opened file with the app.
@@ -86,14 +100,17 @@ public class MainActivity extends Activity implements Merger.LogListener {
             splitAPKUri = fromShareOrView.getData();
         }
         if (splitAPKUri != null) {
-            if(supportsFilePicker) {
-                selectDirToSaveAPKOrSaveNow();
-            } else {
-                new ProcessTask(this).execute(Uri.fromFile(new File(Environment.getExternalStorageDirectory() + File.separator + "Download" + File.separator + getOriginalFileName(this, splitAPKUri))));
-            }
+            selectDirToSaveAPKOrSaveNow();
         }
     }
 
+    final File getAntisplitMFolder() {
+        final File bruh = new File(Environment.getExternalStorageDirectory() + File.separator + "AntiSplit-M");
+        if(!bruh.exists()) bruh.mkdir();
+        return bruh;
+    }
+
+    @TargetApi(Build.VERSION_CODES.M)
     private void checkStoragePerm() {
         final boolean write = Build.VERSION.SDK_INT < 30;
         final boolean noPermission = write ? checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED : !Environment.isExternalStorageManager();
@@ -109,8 +126,7 @@ public class MainActivity extends Activity implements Merger.LogListener {
 
     @Override
     protected void onPause() {
-        final SharedPreferences settings = getSharedPreferences("set", Context.MODE_PRIVATE);
-        settings.edit().putBoolean("logEnabled", logEnabled).putBoolean("ask", ask).apply();
+        getSharedPreferences("set", Context.MODE_PRIVATE).edit().putBoolean("logEnabled", logEnabled).putBoolean("ask", ask).putBoolean("showDialog", showDialog).apply();
         super.onPause();
     }
 
@@ -134,18 +150,28 @@ public class MainActivity extends Activity implements Merger.LogListener {
             TextView workingFileField = findViewById(R.id.workingFileField);
             final String workingFilePath = workingFileField.getText().toString();
             splitAPKUri = Uri.fromFile(new File(workingFilePath));
-            new ProcessTask(this).execute(Uri.fromFile(new File(Environment.getExternalStorageDirectory() + File.separator + "Download" + File.separator + workingFilePath.substring(workingFilePath.lastIndexOf("/") + 1).replace(".apks", "_antisplit.apk").replace(".xapk", "_antisplit.apk").replace(".apkm", "_antisplit.apk"))));
+            new ProcessTask(this).execute(Uri.fromFile(new File(getAntisplitMFolder() + File.separator + workingFilePath.substring(workingFilePath.lastIndexOf("/") + 1).replaceFirst("\\.(?:xapk|aspk|apk[sm])", "_antisplit.apk"))));
         }
     }
 
-    private void process(Uri outputUri) {
-        ((TextView) findViewById(R.id.logField)).setText("");
+    private void process(Uri outputUri, WeakReference<MainActivity> activityReference) {
+        runOnUiThread(() -> ((TextView)findViewById(R.id.logField)).setText(""));
         final File cacheDir = getExternalCacheDir();
-        deleteDir(cacheDir);
+        if (cacheDir != null) {
+            deleteDir(cacheDir);
+        }
+
+        Uri xapkUri;
         try {
-            Merger.run(getContentResolver().openInputStream(splitAPKUri), cacheDir, getContentResolver().openOutputStream(outputUri), splitAPKUri.getPath().endsWith("xapk"));
+            xapkUri = splitAPKUri.getPath().endsWith("xapk") ? splitAPKUri : null;
+        } catch (NullPointerException ignored) {
+            xapkUri = null;
+        }
+
+        try {
+            Merger.run(getContentResolver().openInputStream(splitAPKUri), cacheDir, getContentResolver().openOutputStream(outputUri), xapkUri, this, showDialog, activityReference);
         } catch (IOException e) {
-            showError(e.toString());
+            showError(e);
         }
     }
 
@@ -173,12 +199,34 @@ public class MainActivity extends Activity implements Merger.LogListener {
         ProcessTask(MainActivity context) {
             activityReference = new WeakReference<>(context);
         }
+        private void createHandler(Uri uri) {
+            Thread thread = new Thread() {
+                public void run() {
+                    Looper.prepare();
 
+                    final Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            activityReference.get().process(uri, activityReference);
+                            handler.removeCallbacks(this);
+                            Looper.myLooper().quit();
+                        }
+                    }, 2000);
+
+                    Looper.loop();
+                }
+            };
+            thread.start();
+        }
         @Override
         protected String doInBackground(Uri... uris) {
             MainActivity activity = activityReference.get();
-            activity.process(uris[0]);
-            activity.showSuccess();
+            if(showDialog) createHandler(uris[0]);
+            else {
+                activity.process(uris[0], activityReference);
+                activity.showSuccess();
+            }
             return null;
         }
     }
@@ -204,6 +252,96 @@ public class MainActivity extends Activity implements Merger.LogListener {
             }
         }
     }
+    public void showApkSelectionDialog(List<File> apkFiles, Context c, File cacheDir, OutputStream out) {
+        CharSequence[] apkNames = new CharSequence[apkFiles.size() + 1];
+        boolean[] checkedItems = new boolean[apkFiles.size() + 1];
+
+        apkNames[0] = "Select All";
+        for (int i = 0; i < apkFiles.size(); i++) {
+            apkNames[i + 1] = apkFiles.get(i).getName();
+            checkedItems[i + 1] = false;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(c);
+        builder.setTitle("Select APK files");
+        builder.setMultiChoiceItems(apkNames, checkedItems, (dialog, which, isChecked) -> {
+            if (which == 0) {
+                // "Select All" option
+                for (int i = 1; i < checkedItems.length; i++) {
+                    checkedItems[i] = isChecked;
+                    ((AlertDialog) dialog).getListView().setItemChecked(i, isChecked);
+                }
+            } else {
+                // Uncheck "Select All" if any individual item is unchecked
+                if (!isChecked) {
+                    checkedItems[0] = false;
+                    ((AlertDialog) dialog).getListView().setItemChecked(0, false);
+                }
+            }
+        });
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            // Perform actions on OK button click
+            boolean anyFileSelected = false;
+            for (int i = 1; i < checkedItems.length; i++) {
+                if (checkedItems[i]) {
+                    anyFileSelected = true;
+                    break;
+                }
+            }
+
+            if (anyFileSelected) {
+                for (int i = 1; i < checkedItems.length; i++) {
+                    if (!checkedItems[i]) {
+                        apkFiles.get(i - 1).delete();
+                    }
+                }
+                new ProcessFromDialogTask(this, cacheDir, out).execute();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+
+        runOnUiThread(() -> {
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        });
+    }
+
+    private static class ProcessFromDialogTask extends AsyncTask<Uri, Void, String> {
+        private WeakReference<MainActivity> activityReference;
+
+        File cacheDir;
+        OutputStream outputStream;
+
+        // only retain a weak reference to the activity
+        ProcessFromDialogTask(MainActivity context, File cacheDirectory, OutputStream out) {
+            activityReference = new WeakReference<>(context);
+            cacheDir = cacheDirectory;
+            outputStream = out;
+        }
+
+        @Override
+        protected String doInBackground(Uri... uris) {
+            MainActivity activity = activityReference.get();
+            try {
+                ApkBundle bundle = new ApkBundle();
+                bundle.loadApkDirectory(cacheDir, false);
+                LogUtil.logMessage("Found modules: " + bundle.getApkModuleList().size());
+
+                ApkModule mergedModule = bundle.mergeModules();
+                Merger.sanitizeManifest(mergedModule);
+
+                LogUtil.logMessage("Saving...");
+                mergedModule.writeApk(outputStream);
+                mergedModule.close();
+                outputStream.close();
+                bundle.close();
+            } catch (IOException e) {
+                activity.showError(e);
+            }
+            activity.showSuccess();
+            return null;
+        }
+    }
 
     private void showSuccess() {
         final String successMessage = getString(R.string.success_saved);
@@ -211,12 +349,26 @@ public class MainActivity extends Activity implements Merger.LogListener {
         runOnUiThread(() -> Toast.makeText(this, successMessage, Toast.LENGTH_SHORT).show());
     }
 
-    private void showError(String error) {
+    private void showError(Exception e) {
+        final String mainErr = e.toString();
+        StringBuilder stackTrace = new StringBuilder().append(mainErr);
+        for(StackTraceElement line : e.getStackTrace()) {
+            stackTrace.append(line);
+        }
         runOnUiThread(() -> {
             TextView errorBox = findViewById(R.id.errorField);
             errorBox.setVisibility(View.VISIBLE);
-            errorBox.setText(error);
-            Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
+            errorBox.setText(stackTrace);
+            Toast.makeText(this, mainErr, Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void showError(String err) {
+        runOnUiThread(() -> {
+            TextView errorBox = findViewById(R.id.errorField);
+            errorBox.setVisibility(View.VISIBLE);
+            errorBox.setText(err);
+            Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -236,29 +388,33 @@ public class MainActivity extends Activity implements Merger.LogListener {
                 result = result.substring(cut + 1);
             }
         }
-        return result.replaceFirst("\\.(?:xapk|apk[sm])", "_antisplit");
+        return result.replaceFirst("\\.(?:xapk|aspk|apk[sm])", "_antisplit");
     }
 
     private void selectDirToSaveAPKOrSaveNow() {
-        if(ask) {
+        if (android.os.Build.VERSION.SDK_INT < 19) saveNow();
+        else if(ask) {
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("application/vnd.android.package-archive");
             intent.putExtra(Intent.EXTRA_TITLE, getOriginalFileName(this, splitAPKUri));
             startActivityForResult(intent, REQUEST_CODE_SAVE_APK);
-        } else {
-            checkStoragePerm();
-            String filePath = new FileUtils(this).getPath(splitAPKUri).replaceFirst("\\.(?:xapk|apk[sm])", "_antisplit.apk");
-            if(filePath.isEmpty() || filePath.startsWith("/data/user")) {
-                final File bruh = new File(Environment.getExternalStorageDirectory() + File.separator + "AntiSplit-M");
-                if(!bruh.exists()) bruh.mkdir();
-                filePath = bruh + File.separator + filePath.substring(filePath.lastIndexOf(File.separator) + 1);
-                showError(getString(R.string.no_filepath) + filePath);
-            }
-            LogUtil.logMessage(filePath);
-            ((TextView) findViewById(R.id.workingFileField)).setText(filePath);
+        } else saveNow();
+    }
 
-            new ProcessTask(this).execute(Uri.fromFile(new File(filePath)));
+    private void saveNow() {
+        checkStoragePerm();
+
+        final String originalFilePath = new FileUtils(this).getPath(splitAPKUri);
+        runOnUiThread(() -> ((TextView)findViewById(R.id.workingFileField)).setText(originalFilePath));
+
+        String newFilePath = originalFilePath.replaceFirst("\\.(?:xapk|aspk|apk[sm])", "_antisplit.apk");
+        if(newFilePath.isEmpty() || newFilePath.startsWith("/data/")) { // when shared it in /data/ bruh
+            newFilePath = getAntisplitMFolder() + File.separator + newFilePath.substring(newFilePath.lastIndexOf(File.separator) + 1);
+            showError(getString(R.string.no_filepath));
         }
+        LogUtil.logMessage(getString(R.string.output) + " " + newFilePath);
+
+        new ProcessTask(this).execute(Uri.fromFile(new File(newFilePath)));
     }
 }

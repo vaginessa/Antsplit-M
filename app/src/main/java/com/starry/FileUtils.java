@@ -249,13 +249,13 @@ public class FileUtils {
         File output;
         if (!TextUtils.isEmpty(newDirName)) {
             String randomCollisionAvoidance = UUID.randomUUID().toString();
-            File dir = new File(context.getFilesDir() + File.separator + newDirName + File.separator + randomCollisionAvoidance);
+            File dir = new File(context.getCacheDir() + File.separator + newDirName + File.separator + randomCollisionAvoidance);
             if (!dir.exists()) {
                 dir.mkdirs();
             }
-            output = new File(context.getFilesDir() + File.separator + newDirName + File.separator + randomCollisionAvoidance + File.separator + name);
+            output = new File(context.getCacheDir() + File.separator + newDirName + File.separator + randomCollisionAvoidance + File.separator + name);
         } else {
-            output = new File(context.getFilesDir() + File.separator + name);
+            output = new File(context.getCacheDir() + File.separator + name);
         }
 
         try (FileOutputStream outputStream = new FileOutputStream(output)) {

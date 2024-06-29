@@ -7,5 +7,7 @@
     <string name="enable_logs">Enable logs</string>
     <string name="ask">Ask where to save the file each time (if disabled, write the AntiSplitted APK to the same directory where the split file was from)</string>
     <string name="grant_storage">Storage permission is required to save to the same dir as the selected file</string>
-    <string name="no_filepath">Could not find the filepath of the selected file; saving to </string>
+    <string name="no_filepath">Could not find the filepath of the selected file</string>
+    <string name="output">Output directory:</string>
+    <string name="show_dialog">Show dialog allowing selection of which splits to include</string>
 </resources>

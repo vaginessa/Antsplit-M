@@ -15,6 +15,10 @@
  */
 package com.reandroid.apkeditor.merge;
 
+import android.content.Context;
+import android.net.Uri;
+
+import com.abdurazaaqmohammed.AntiSplit.main.MainActivity;
 import com.reandroid.apk.ApkBundle;
 import com.reandroid.apk.ApkModule;
 import com.reandroid.apkeditor.common.AndroidManifestHelper;
@@ -29,12 +33,15 @@ import com.reandroid.arsc.model.ResourceEntry;
 import com.reandroid.arsc.value.Entry;
 import com.reandroid.arsc.value.ResValue;
 import com.reandroid.arsc.value.ValueType;
+import com.starry.FileUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -51,18 +58,87 @@ public class Merger {
         }
         return file;
     }
-    private static void extractZip(InputStream zi, File outputDir, boolean isXAPK) throws IOException {
+    private static List<File> extractZipWithList(InputStream zi, File outputDir, Uri xapkUri, Context c) throws IOException {
         byte[] buffer = new byte[1024];
+        List<File> extractedApkFiles = new ArrayList<>();
 
-        if(isXAPK) {
-            final File bruh = new File(outputDir + File.separator + "bruh.zip");
-            OutputStream os = new FileOutputStream(bruh);
-            int length;
-            while ((length = zi.read(buffer)) > 0) {
-                os.write(buffer, 0, length);
+        if (xapkUri == null) {
+            try (ZipInputStream zis = new ZipInputStream(zi)) {
+                ZipEntry zipEntry = zis.getNextEntry();
+                while (zipEntry != null) {
+                    final String name = zipEntry.getName();
+                    if (name.endsWith(".apk")) {
+                        File outFile = newFile(outputDir, name);
+                        try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                            int len;
+                            while ((len = zis.read(buffer)) > 0) {
+                                fos.write(buffer, 0, len);
+                            }
+                        }
+                        extractedApkFiles.add(outFile);
+                        LogUtil.logMessage("Extracted " + name);
+                    } else LogUtil.logMessage("Skipping " + name + ": Not an APK file");
+                    zipEntry = zis.getNextEntry();
+                }
+                zis.closeEntry();
             }
-            zi.close();
-            os.close();
+        } else {
+            LogUtil.logMessage("XAPK file detected, ensuring it can be extracted properly");
+            final File bruh = new File(new FileUtils(c).getPath(xapkUri)); // This will copy to cache dir if no permission
+            try (ZipFile zipFile = new ZipFile(bruh)) {
+                Enumeration<? extends ZipEntry> entries = zipFile.entries();
+
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    String fileName = entry.getName();
+
+                    if (fileName.endsWith(".apk")) {
+                        File outFile = new File(outputDir, fileName);
+                        File parentDir = outFile.getParentFile();
+                        if (!parentDir.exists()) {
+                            parentDir.mkdirs();
+                        }
+
+                        try (InputStream is = zipFile.getInputStream(entry);
+                             FileOutputStream fos = new FileOutputStream(outFile)) {
+                            byte[] buffy = new byte[1024];
+                            int len;
+                            while ((len = is.read(buffy)) > 0) {
+                                fos.write(buffy, 0, len);
+                            }
+                        }
+                        extractedApkFiles.add(outFile);
+                    } else LogUtil.logMessage("Skipping " + fileName + ": Not an APK file");
+                }
+            }
+        }
+
+        return extractedApkFiles;
+    }
+    private static void extractZip(InputStream zi, File outputDir, Uri xapkUri, Context c) throws IOException {
+
+        if(xapkUri == null) {
+            byte[] buffer = new byte[1024];
+            try (ZipInputStream zis = new ZipInputStream(zi)) {
+                ZipEntry zipEntry = zis.getNextEntry();
+                while (zipEntry != null) {
+                    final String name = zipEntry.getName();
+                    if (name.endsWith(".apk")) {
+                        FileOutputStream fos = new FileOutputStream(newFile(outputDir, name));
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
+                        fos.close();
+                        LogUtil.logMessage("Extracted " + name);
+                    } else LogUtil.logMessage("Skipping " + name + ": Not an APK file");
+                    zipEntry = zis.getNextEntry();
+                }
+                zis.closeEntry();
+            }
+        } else {
+            LogUtil.logMessage("XAPK file detected, ensuring it can be extracted properly");
+            final File bruh = new File(new FileUtils(c).getPath(xapkUri)); // This will copy to cache dir if no permission
             try (ZipFile zipFile = new ZipFile(bruh)) {
                 Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
@@ -88,29 +164,10 @@ public class Merger {
                     } else LogUtil.logMessage("Skipping " + fileName + ": Not an APK file");
                 }
             }
-            bruh.delete();
-        }
-        else {
-            try (ZipInputStream zis = new ZipInputStream(zi)) {
-                ZipEntry zipEntry = zis.getNextEntry();
-                while (zipEntry != null) {
-                    final String name = zipEntry.getName();
-                    if(name.endsWith(".apk")) {
-                        FileOutputStream fos = new FileOutputStream(newFile(outputDir, name));
-                        int len;
-                        while ((len = zis.read(buffer)) > 0) {
-                            fos.write(buffer, 0, len);
-                        }
-                        fos.close();
-                        LogUtil.logMessage("Extracted " + name);
-                    } else LogUtil.logMessage("Skipping " + name + ": Not an APK file");
-                    zipEntry = zis.getNextEntry();
-                }
-                zis.closeEntry();
-            }
         }
     }
-    private static void sanitizeManifest(ApkModule apkModule) {
+
+    public static void sanitizeManifest(ApkModule apkModule) {
         if(!apkModule.hasAndroidManifest()){
             return;
         }
@@ -193,19 +250,25 @@ public class Merger {
         void onLog(String log);
     }
 
-    public static void run(InputStream ins, File cacheDir, OutputStream out, boolean isXAPK) throws IOException {
+    public static void run(InputStream ins, File cacheDir, OutputStream out, Uri xapkUri, Context context, boolean showDialog, WeakReference<MainActivity> act) throws IOException {
         LogUtil.logMessage("Searching apk files ...");
 
-        extractZip(ins, cacheDir, isXAPK);
-        ApkBundle bundle=new ApkBundle();
-        bundle.loadApkDirectory(cacheDir, false);
-        LogUtil.logMessage("Found modules: "+bundle.getApkModuleList().size());
+        if(showDialog) act.get().showApkSelectionDialog(extractZipWithList(ins, cacheDir, xapkUri, context), context, cacheDir, out);
+        else {
+            extractZip(ins, cacheDir, xapkUri, context);
 
-        ApkModule mergedModule=bundle.mergeModules();
-        sanitizeManifest(mergedModule);
+            ApkBundle bundle = new ApkBundle();
+            bundle.loadApkDirectory(cacheDir, false);
+            LogUtil.logMessage("Found modules: " + bundle.getApkModuleList().size());
 
-        mergedModule.writeApk(out);
-        mergedModule.close();
-        bundle.close();
+            ApkModule mergedModule = bundle.mergeModules();
+            sanitizeManifest(mergedModule);
+            LogUtil.logMessage("Saving...");
+
+            mergedModule.writeApk(out);
+            mergedModule.close();
+            out.close();
+            bundle.close();
+        }
     }
 }
